@@ -186,6 +186,7 @@ async def test_stale_feed_unavailable(
     config_single_feed: MockConfigEntry,
     emoncms_client: AsyncMock,
     freezer: FrozenDateTimeFactory,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test a feed that stops updating becomes unavailable, then recovers."""
     now = datetime.fromtimestamp(1665509570, UTC)
@@ -202,6 +203,11 @@ async def test_stale_feed_unavailable(
     async_fire_time_changed(hass)
     await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(entity_id).state == "unavailable"
+    assert caplog.text.count("Feed tag parameter 1 has stopped updating") == 1
+
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=60))
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert caplog.text.count("Feed tag parameter 1 has stopped updating") == 1
 
     emoncms_client.async_request.return_value = {
         "success": True,
@@ -213,3 +219,4 @@ async def test_stale_feed_unavailable(
     async_fire_time_changed(hass)
     await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(entity_id).state == "18.04"
+    assert "Feed tag parameter 1 is updating again" in caplog.text

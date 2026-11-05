@@ -39,6 +39,7 @@ from .const import (
     FEED_ID,
     FEED_NAME,
     FEED_TAG,
+    LOGGER,
     MANUFACTURER,
 )
 from .coordinator import EmonCMSConfigEntry, EmoncmsCoordinator
@@ -248,6 +249,7 @@ class EmonCmsSensor(CoordinatorEntity[EmoncmsCoordinator], SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.idx = idx
+        self._stale = False
         elem = {}
         if self.coordinator.data:
             elem = self.coordinator.data[self.idx]
@@ -290,17 +292,27 @@ class EmonCmsSensor(CoordinatorEntity[EmoncmsCoordinator], SensorEntity):
         if elem["value"] is not None:
             self._attr_native_value = round(float(elem["value"]), DECIMALS)
 
+        stale = (
+            elem["time"] is None
+            or dt_util.utcnow() - dt_util.utc_from_timestamp(float(elem["time"]))
+            >= STALE_AFTER
+        )
+        if stale != self._stale:
+            if stale:
+                LOGGER.info(
+                    "Feed %s %s has stopped updating", elem[FEED_TAG], elem[FEED_NAME]
+                )
+            else:
+                LOGGER.info(
+                    "Feed %s %s is updating again", elem[FEED_TAG], elem[FEED_NAME]
+                )
+            self._stale = stale
+
     @property
     @override
     def available(self) -> bool:
         """Return False when the feed has stopped updating."""
-        if not super().available or not self.coordinator.data:
-            return False
-        last = self.coordinator.data[self.idx]["time"]
-        return (
-            last is not None
-            and dt_util.utcnow() - dt_util.utc_from_timestamp(float(last)) < STALE_AFTER
-        )
+        return super().available and not self._stale
 
     @callback
     @override
