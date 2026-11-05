@@ -34,8 +34,10 @@ from homeassistant.util import dt as dt_util
 
 from .config_flow import sensor_name
 from .const import (
+    CONF_DEVICE,
     CONF_ONLY_INCLUDE_FEEDID,
     CONF_STALE_AFTER,
+    CONF_STALE_AFTER_OVERRIDES,
     DEFAULT_STALE_AFTER,
     DOMAIN,
     FEED_ID,
@@ -211,9 +213,11 @@ async def async_setup_entry(
         return
 
     coordinator = entry.runtime_data
-    stale_after = timedelta(
-        minutes=entry.options.get(CONF_STALE_AFTER, DEFAULT_STALE_AFTER)
-    )
+    default_stale_after = entry.options.get(CONF_STALE_AFTER, DEFAULT_STALE_AFTER)
+    stale_after_by_tag = {
+        override[CONF_DEVICE]: override[CONF_STALE_AFTER]
+        for override in entry.options.get(CONF_STALE_AFTER_OVERRIDES, [])
+    }
     # uuid was added in emoncms database 11.5.7
     unique_id = entry.unique_id or entry.entry_id
     elems = coordinator.data
@@ -231,7 +235,9 @@ async def async_setup_entry(
                 elem.get("unit"),
                 name,
                 idx,
-                stale_after,
+                timedelta(
+                    minutes=stale_after_by_tag.get(elem[FEED_TAG], default_stale_after)
+                ),
             )
         )
     async_add_entities(sensors)

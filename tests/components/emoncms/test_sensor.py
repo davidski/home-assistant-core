@@ -15,6 +15,7 @@ from syrupy.assertion import SnapshotAssertion
 from homeassistant.components.emoncms.const import (
     CONF_ONLY_INCLUDE_FEEDID,
     CONF_STALE_AFTER,
+    CONF_STALE_AFTER_OVERRIDES,
     DOMAIN,
 )
 from homeassistant.config_entries import ConfigEntryState
@@ -252,3 +253,39 @@ async def test_stale_after_option(
     async_fire_time_changed(hass)
     await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(entity_id).state == "unavailable"
+
+
+async def test_stale_after_device_override(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    emoncms_client: AsyncMock,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Test a device override replaces the default cutoff for that tag only."""
+    freezer.move_to(datetime.fromtimestamp(1665509570, UTC))
+    emoncms_client.async_request.return_value = {
+        "success": True,
+        "message": [
+            {**get_feed(1, unit="°C"), "tag": "garage"},
+            get_feed(2, unit="°C"),
+        ],
+    }
+    await setup_integration(hass, config_entry)
+    result = await hass.config_entries.options.async_init(config_entry.entry_id)
+    await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_ONLY_INCLUDE_FEEDID: ["1", "2"],
+            CONF_STALE_AFTER: 60,
+            CONF_STALE_AFTER_OVERRIDES: [{"device": "garage", "stale_after": 5}],
+        },
+    )
+    await hass.async_block_till_done()
+
+    freezer.tick(timedelta(minutes=6))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert (
+        hass.states.get("sensor.garage_temperature_parameter_1").state == "unavailable"
+    )
+    assert hass.states.get("sensor.tag_temperature_parameter_2").state == "18.04"

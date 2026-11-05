@@ -100,11 +100,13 @@
       "init": {
         "data": {
           "include_only_feed_id": "[%key:component::emoncms::config::step::choose_feeds::data::include_only_feed_id%]",
-          "stale_after": "Offline after"
+          "stale_after": "Offline after",
+          "stale_after_overrides": "Device overrides"
         },
         "data_description": {
           "include_only_feed_id": "[%key:component::emoncms::config::step::choose_feeds::data_description::include_only_feed_id%]",
-          "stale_after": "Minutes without a new value before a feed is shown as unavailable."
+          "stale_after": "Minutes without a new value before a feed is shown as unavailable.",
+          "stale_after_overrides": "Devices that need a different cutoff. All other devices use the default."
         }
       }
     }
@@ -114,6 +116,18 @@
       "options": {
         "auto": "Synchronize all available feeds",
         "manual": "Select which feeds to synchronize"
+      }
+    },
+    "stale_after_overrides": {
+      "fields": {
+        "device": {
+          "name": "Device",
+          "overview_label": "Device: {value}"
+        },
+        "stale_after": {
+          "name": "Offline after",
+          "overview_label": "Offline after: {value} min"
+        }
       }
     }
   }

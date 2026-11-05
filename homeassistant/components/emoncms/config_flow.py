@@ -17,6 +17,9 @@ from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
+    ObjectSelector,
+    ObjectSelectorConfig,
+    ObjectSelectorField,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -24,9 +27,11 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import (
+    CONF_DEVICE,
     CONF_MESSAGE,
     CONF_ONLY_INCLUDE_FEEDID,
     CONF_STALE_AFTER,
+    CONF_STALE_AFTER_OVERRIDES,
     CONF_SUCCESS,
     DEFAULT_STALE_AFTER,
     DOMAIN,
@@ -250,18 +255,30 @@ class EmoncmsOptionsFlow(OptionsFlowWithReload):
             self._api_key,
             session=async_get_clientsession(self.hass),
         )
+        overrides = self.config_entry.options.get(CONF_STALE_AFTER_OVERRIDES, [])
+        tags = {override[CONF_DEVICE] for override in overrides}
         result = await get_feed_list(emoncms_client)
         if not result[CONF_SUCCESS]:
             errors["base"] = "api_error"
             description_placeholders = {"details": result[CONF_MESSAGE]}
         else:
             options = get_options(result[CONF_MESSAGE])
+            tags.update(
+                feed[FEED_TAG] for feed in result[CONF_MESSAGE] if feed[FEED_TAG]
+            )
         dropdown = {"options": options, "mode": "dropdown", "multiple": True}
         if user_input:
             return self.async_create_entry(
                 data={
                     CONF_ONLY_INCLUDE_FEEDID: user_input[CONF_ONLY_INCLUDE_FEEDID],
                     CONF_STALE_AFTER: int(user_input[CONF_STALE_AFTER]),
+                    CONF_STALE_AFTER_OVERRIDES: [
+                        {
+                            CONF_DEVICE: override[CONF_DEVICE],
+                            CONF_STALE_AFTER: int(override[CONF_STALE_AFTER]),
+                        }
+                        for override in user_input.get(CONF_STALE_AFTER_OVERRIDES, [])
+                    ],
                 },
             )
 
@@ -284,6 +301,38 @@ class EmoncmsOptionsFlow(OptionsFlowWithReload):
                             step=1,
                             unit_of_measurement="min",
                             mode=NumberSelectorMode.BOX,
+                        )
+                    ),
+                    probatio.Optional(
+                        CONF_STALE_AFTER_OVERRIDES, default=overrides
+                    ): ObjectSelector(
+                        ObjectSelectorConfig(
+                            multiple=True,
+                            label_field=CONF_DEVICE,
+                            translation_key=CONF_STALE_AFTER_OVERRIDES,
+                            fields={
+                                CONF_DEVICE: ObjectSelectorField(
+                                    required=True,
+                                    selector=SelectSelector(
+                                        SelectSelectorConfig(
+                                            options=sorted(tags),
+                                            mode=SelectSelectorMode.DROPDOWN,
+                                        )
+                                    ),
+                                ),
+                                CONF_STALE_AFTER: ObjectSelectorField(
+                                    required=True,
+                                    selector=NumberSelector(
+                                        NumberSelectorConfig(
+                                            min=1,
+                                            max=1440,
+                                            step=1,
+                                            unit_of_measurement="min",
+                                            mode=NumberSelectorMode.BOX,
+                                        )
+                                    ),
+                                ),
+                            },
                         )
                     ),
                 }

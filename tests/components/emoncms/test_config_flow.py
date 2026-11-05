@@ -8,6 +8,7 @@ from pytest_homeassistant.common import MockConfigEntry
 from homeassistant.components.emoncms.const import (
     CONF_ONLY_INCLUDE_FEEDID,
     CONF_STALE_AFTER,
+    CONF_STALE_AFTER_OVERRIDES,
     DOMAIN,
     SYNC_MODE,
     SYNC_MODE_AUTO,
@@ -204,6 +205,7 @@ async def test_options_flow(
     assert config_entry.options == {
         CONF_ONLY_INCLUDE_FEEDID: ["1"],
         CONF_STALE_AFTER: 60,
+        CONF_STALE_AFTER_OVERRIDES: [],
     }
 
 
@@ -233,6 +235,7 @@ async def test_options_flow_failure(
     assert config_entry.options == {
         CONF_ONLY_INCLUDE_FEEDID: ["1"],
         CONF_STALE_AFTER: 60,
+        CONF_STALE_AFTER_OVERRIDES: [],
     }
 
 
@@ -252,3 +255,30 @@ async def test_unique_id_exists(
     )
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+
+
+async def test_options_flow_stale_after_overrides(
+    hass: HomeAssistant,
+    emoncms_client: AsyncMock,
+    config_entry: MockConfigEntry,
+) -> None:
+    """Options flow - per-device cutoffs are offered by tag and saved."""
+    await setup_integration(hass, config_entry)
+    result = await hass.config_entries.options.async_init(config_entry.entry_id)
+    schema = result["data_schema"].schema
+    (overrides_key,) = (key for key in schema if key == CONF_STALE_AFTER_OVERRIDES)
+    fields = schema[overrides_key].config["fields"]
+    assert fields["device"]["selector"].config["options"] == ["tag"]
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_ONLY_INCLUDE_FEEDID: ["1"],
+            CONF_STALE_AFTER: 60,
+            CONF_STALE_AFTER_OVERRIDES: [{"device": "tag", "stale_after": 180.0}],
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert config_entry.options[CONF_STALE_AFTER_OVERRIDES] == [
+        {"device": "tag", "stale_after": 180}
+    ]

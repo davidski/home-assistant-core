@@ -4,6 +4,8 @@ import logging
 
 CONF_ONLY_INCLUDE_FEEDID = "include_only_feed_id"
 CONF_STALE_AFTER = "stale_after"
+CONF_STALE_AFTER_OVERRIDES = "stale_after_overrides"
+CONF_DEVICE = "device"
 CONF_MESSAGE = "message"
 CONF_SUCCESS = "success"
 DEFAULT_STALE_AFTER = 60
