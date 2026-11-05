@@ -6,6 +6,7 @@ import pytest
 from pytest_homeassistant.common import MockConfigEntry
 
 from homeassistant.components.emoncms.const import (
+    CONF_OFFLINE_DETECTION,
     CONF_ONLY_INCLUDE_FEEDID,
     CONF_STALE_AFTER,
     CONF_STALE_AFTER_OVERRIDES,
@@ -266,8 +267,12 @@ async def test_options_flow_stale_after_overrides(
     await setup_integration(hass, config_entry)
     result = await hass.config_entries.options.async_init(config_entry.entry_id)
     schema = result["data_schema"].schema
-    (overrides_key,) = (key for key in schema if key == CONF_STALE_AFTER_OVERRIDES)
-    fields = schema[overrides_key].config["fields"]
+    (section_key,) = (key for key in schema if key == CONF_OFFLINE_DETECTION)
+    section_schema = schema[section_key].schema.schema
+    (overrides_key,) = (
+        key for key in section_schema if key == CONF_STALE_AFTER_OVERRIDES
+    )
+    fields = section_schema[overrides_key].config["fields"]
     assert fields["device"]["selector"].config["options"] == ["tag"]
     assert fields["stale_after"]["default"] == 15
 
@@ -275,8 +280,10 @@ async def test_options_flow_stale_after_overrides(
         result["flow_id"],
         user_input={
             CONF_ONLY_INCLUDE_FEEDID: ["1"],
-            CONF_STALE_AFTER: 60,
-            CONF_STALE_AFTER_OVERRIDES: [{"device": "tag", "stale_after": 180.0}],
+            CONF_OFFLINE_DETECTION: {
+                CONF_STALE_AFTER: 60,
+                CONF_STALE_AFTER_OVERRIDES: [{"device": "tag", "stale_after": 180.0}],
+            },
         },
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY

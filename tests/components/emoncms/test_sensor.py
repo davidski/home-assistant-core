@@ -13,6 +13,7 @@ from pytest_homeassistant.common import (
 from syrupy.assertion import SnapshotAssertion
 
 from homeassistant.components.emoncms.const import (
+    CONF_OFFLINE_DETECTION,
     CONF_ONLY_INCLUDE_FEEDID,
     CONF_STALE_AFTER,
     CONF_STALE_AFTER_OVERRIDES,
@@ -243,7 +244,10 @@ async def test_stale_after_option(
     result = await hass.config_entries.options.async_init(config_single_feed.entry_id)
     await hass.config_entries.options.async_configure(
         result["flow_id"],
-        user_input={CONF_ONLY_INCLUDE_FEEDID: ["1"], CONF_STALE_AFTER: 120},
+        user_input={
+            CONF_ONLY_INCLUDE_FEEDID: ["1"],
+            CONF_OFFLINE_DETECTION: {CONF_STALE_AFTER: 120},
+        },
     )
     await hass.async_block_till_done()
     entity_id = "sensor.tag_temperature_parameter_1"
@@ -280,8 +284,10 @@ async def test_stale_after_device_override(
         result["flow_id"],
         user_input={
             CONF_ONLY_INCLUDE_FEEDID: ["1", "2"],
-            CONF_STALE_AFTER: 60,
-            CONF_STALE_AFTER_OVERRIDES: [{"device": "garage", "stale_after": 5}],
+            CONF_OFFLINE_DETECTION: {
+                CONF_STALE_AFTER: 60,
+                CONF_STALE_AFTER_OVERRIDES: [{"device": "garage", "stale_after": 5}],
+            },
         },
     )
     await hass.async_block_till_done()

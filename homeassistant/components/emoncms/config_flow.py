@@ -12,6 +12,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.core import callback
+from homeassistant.data_entry_flow import section
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     NumberSelector,
@@ -29,6 +30,7 @@ from homeassistant.helpers.selector import (
 from .const import (
     CONF_DEVICE,
     CONF_MESSAGE,
+    CONF_OFFLINE_DETECTION,
     CONF_ONLY_INCLUDE_FEEDID,
     CONF_STALE_AFTER,
     CONF_STALE_AFTER_OVERRIDES,
@@ -271,16 +273,17 @@ class EmoncmsOptionsFlow(OptionsFlowWithReload):
             CONF_STALE_AFTER, DEFAULT_STALE_AFTER
         )
         if user_input:
+            offline = user_input[CONF_OFFLINE_DETECTION]
             return self.async_create_entry(
                 data={
                     CONF_ONLY_INCLUDE_FEEDID: user_input[CONF_ONLY_INCLUDE_FEEDID],
-                    CONF_STALE_AFTER: int(user_input[CONF_STALE_AFTER]),
+                    CONF_STALE_AFTER: int(offline[CONF_STALE_AFTER]),
                     CONF_STALE_AFTER_OVERRIDES: [
                         {
                             CONF_DEVICE: override[CONF_DEVICE],
                             CONF_STALE_AFTER: int(override[CONF_STALE_AFTER]),
                         }
-                        for override in user_input.get(CONF_STALE_AFTER_OVERRIDES, [])
+                        for override in offline.get(CONF_STALE_AFTER_OVERRIDES, [])
                     ],
                 },
             )
@@ -292,49 +295,57 @@ class EmoncmsOptionsFlow(OptionsFlowWithReload):
                     probatio.Required(
                         CONF_ONLY_INCLUDE_FEEDID, default=include_only_feeds
                     ): selector({"select": dropdown}),
-                    probatio.Required(
-                        CONF_STALE_AFTER, default=stale_after
-                    ): NumberSelector(
-                        NumberSelectorConfig(
-                            min=1,
-                            max=1440,
-                            step=1,
-                            unit_of_measurement="min",
-                            mode=NumberSelectorMode.BOX,
-                        )
-                    ),
-                    probatio.Optional(
-                        CONF_STALE_AFTER_OVERRIDES, default=overrides
-                    ): ObjectSelector(
-                        ObjectSelectorConfig(
-                            multiple=True,
-                            label_field=CONF_DEVICE,
-                            translation_key=CONF_STALE_AFTER_OVERRIDES,
-                            fields={
-                                CONF_DEVICE: ObjectSelectorField(
-                                    required=True,
-                                    selector=SelectSelector(
-                                        SelectSelectorConfig(
-                                            options=sorted(tags),
-                                            mode=SelectSelectorMode.DROPDOWN,
-                                        )
-                                    ),
+                    probatio.Required(CONF_OFFLINE_DETECTION, default={}): section(
+                        probatio.Schema(
+                            {
+                                probatio.Required(
+                                    CONF_STALE_AFTER, default=stale_after
+                                ): NumberSelector(
+                                    NumberSelectorConfig(
+                                        min=1,
+                                        max=1440,
+                                        step=1,
+                                        unit_of_measurement="min",
+                                        mode=NumberSelectorMode.BOX,
+                                    )
                                 ),
-                                CONF_STALE_AFTER: ObjectSelectorField(
-                                    required=True,
-                                    default=stale_after,
-                                    selector=NumberSelector(
-                                        NumberSelectorConfig(
-                                            min=1,
-                                            max=1440,
-                                            step=1,
-                                            unit_of_measurement="min",
-                                            mode=NumberSelectorMode.BOX,
-                                        )
-                                    ),
+                                probatio.Optional(
+                                    CONF_STALE_AFTER_OVERRIDES, default=overrides
+                                ): ObjectSelector(
+                                    ObjectSelectorConfig(
+                                        multiple=True,
+                                        label_field=CONF_DEVICE,
+                                        description_field=CONF_STALE_AFTER,
+                                        translation_key=CONF_STALE_AFTER_OVERRIDES,
+                                        fields={
+                                            CONF_DEVICE: ObjectSelectorField(
+                                                required=True,
+                                                selector=SelectSelector(
+                                                    SelectSelectorConfig(
+                                                        options=sorted(tags),
+                                                        mode=SelectSelectorMode.DROPDOWN,
+                                                    )
+                                                ),
+                                            ),
+                                            CONF_STALE_AFTER: ObjectSelectorField(
+                                                required=True,
+                                                default=stale_after,
+                                                selector=NumberSelector(
+                                                    NumberSelectorConfig(
+                                                        min=1,
+                                                        max=1440,
+                                                        step=1,
+                                                        unit_of_measurement="min",
+                                                        mode=NumberSelectorMode.BOX,
+                                                    )
+                                                ),
+                                            ),
+                                        },
+                                    )
                                 ),
-                            },
-                        )
+                            }
+                        ),
+                        {"collapsed": False},
                     ),
                 }
             ),
