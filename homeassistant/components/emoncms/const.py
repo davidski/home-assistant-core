@@ -8,7 +8,7 @@ CONF_STALE_AFTER_OVERRIDES = "stale_after_overrides"
 CONF_DEVICE = "device"
 CONF_MESSAGE = "message"
 CONF_SUCCESS = "success"
-DEFAULT_STALE_AFTER = 5
+DEFAULT_STALE_AFTER = 15
 DOMAIN = "emoncms"
 EMONCMS_UUID_DOC_URL = (
     "https://docs.openenergymonitor.org/emoncms/update.html"

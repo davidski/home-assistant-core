@@ -204,7 +204,7 @@ async def test_stale_feed_unavailable(
     entity_id = "sensor.tag_temperature_parameter_1"
     assert hass.states.get(entity_id).state == "18.04"
 
-    freezer.tick(timedelta(minutes=6))
+    freezer.tick(timedelta(minutes=16))
     async_fire_time_changed(hass)
     await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(entity_id).state == "unavailable"
