@@ -267,6 +267,9 @@ class EmoncmsOptionsFlow(OptionsFlowWithReload):
                 feed[FEED_TAG] for feed in result[CONF_MESSAGE] if feed[FEED_TAG]
             )
         dropdown = {"options": options, "mode": "dropdown", "multiple": True}
+        stale_after = self.config_entry.options.get(
+            CONF_STALE_AFTER, DEFAULT_STALE_AFTER
+        )
         if user_input:
             return self.async_create_entry(
                 data={
@@ -290,10 +293,7 @@ class EmoncmsOptionsFlow(OptionsFlowWithReload):
                         CONF_ONLY_INCLUDE_FEEDID, default=include_only_feeds
                     ): selector({"select": dropdown}),
                     probatio.Required(
-                        CONF_STALE_AFTER,
-                        default=self.config_entry.options.get(
-                            CONF_STALE_AFTER, DEFAULT_STALE_AFTER
-                        ),
+                        CONF_STALE_AFTER, default=stale_after
                     ): NumberSelector(
                         NumberSelectorConfig(
                             min=1,
@@ -322,6 +322,7 @@ class EmoncmsOptionsFlow(OptionsFlowWithReload):
                                 ),
                                 CONF_STALE_AFTER: ObjectSelectorField(
                                     required=True,
+                                    default=stale_after,
                                     selector=NumberSelector(
                                         NumberSelectorConfig(
                                             min=1,

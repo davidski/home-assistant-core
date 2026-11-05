@@ -204,7 +204,7 @@ async def test_options_flow(
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert config_entry.options == {
         CONF_ONLY_INCLUDE_FEEDID: ["1"],
-        CONF_STALE_AFTER: 60,
+        CONF_STALE_AFTER: 5,
         CONF_STALE_AFTER_OVERRIDES: [],
     }
 
@@ -234,7 +234,7 @@ async def test_options_flow_failure(
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert config_entry.options == {
         CONF_ONLY_INCLUDE_FEEDID: ["1"],
-        CONF_STALE_AFTER: 60,
+        CONF_STALE_AFTER: 5,
         CONF_STALE_AFTER_OVERRIDES: [],
     }
 
@@ -269,6 +269,7 @@ async def test_options_flow_stale_after_overrides(
     (overrides_key,) = (key for key in schema if key == CONF_STALE_AFTER_OVERRIDES)
     fields = schema[overrides_key].config["fields"]
     assert fields["device"]["selector"].config["options"] == ["tag"]
+    assert fields["stale_after"]["default"] == 5
 
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],

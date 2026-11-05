@@ -204,7 +204,7 @@ async def test_stale_feed_unavailable(
     entity_id = "sensor.tag_temperature_parameter_1"
     assert hass.states.get(entity_id).state == "18.04"
 
-    freezer.tick(timedelta(hours=1, minutes=1))
+    freezer.tick(timedelta(minutes=6))
     async_fire_time_changed(hass)
     await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(entity_id).state == "unavailable"
@@ -243,13 +243,17 @@ async def test_stale_after_option(
     result = await hass.config_entries.options.async_init(config_single_feed.entry_id)
     await hass.config_entries.options.async_configure(
         result["flow_id"],
-        user_input={CONF_ONLY_INCLUDE_FEEDID: ["1"], CONF_STALE_AFTER: 5},
+        user_input={CONF_ONLY_INCLUDE_FEEDID: ["1"], CONF_STALE_AFTER: 120},
     )
     await hass.async_block_till_done()
     entity_id = "sensor.tag_temperature_parameter_1"
+
+    freezer.tick(timedelta(minutes=61))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(entity_id).state == "18.04"
 
-    freezer.tick(timedelta(minutes=6))
+    freezer.tick(timedelta(minutes=60))
     async_fire_time_changed(hass)
     await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(entity_id).state == "unavailable"
