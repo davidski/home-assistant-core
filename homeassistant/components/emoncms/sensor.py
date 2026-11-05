@@ -1,5 +1,6 @@
 """Support for monitoring emoncms feeds."""
 
+from datetime import timedelta
 from typing import Any, override
 
 from homeassistant.components.sensor import (
@@ -190,6 +191,8 @@ ATTR_SIZE = "Size"
 ATTR_TAG = "Tag"
 ATTR_USERID = "UserId"
 DECIMALS = 2
+# Feeds not updated within this window are treated as offline
+STALE_AFTER = timedelta(hours=1)
 
 
 async def async_setup_entry(
@@ -286,6 +289,18 @@ class EmonCmsSensor(CoordinatorEntity[EmoncmsCoordinator], SensorEntity):
         self._attr_native_value = None
         if elem["value"] is not None:
             self._attr_native_value = round(float(elem["value"]), DECIMALS)
+
+    @property
+    @override
+    def available(self) -> bool:
+        """Return False when the feed has stopped updating."""
+        if not super().available or not self.coordinator.data:
+            return False
+        last = self.coordinator.data[self.idx]["time"]
+        return (
+            last is not None
+            and dt_util.utcnow() - dt_util.utc_from_timestamp(float(last)) < STALE_AFTER
+        )
 
     @callback
     @override

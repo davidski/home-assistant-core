@@ -1,5 +1,6 @@
 """Test emoncms sensor."""
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 from freezegun.api import FrozenDateTimeFactory
@@ -16,6 +17,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_URL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.util import dt as dt_util
 
 from . import setup_integration
 from .conftest import EMONCMS_FAILURE, UNIQUE_ID, get_feed
@@ -64,6 +66,7 @@ async def test_coordinator_update(
     freezer: FrozenDateTimeFactory,
 ) -> None:
     """Test coordinator update."""
+    freezer.move_to(datetime.fromtimestamp(1665509570, UTC))
     emoncms_client.async_request.return_value = {
         "success": True,
         "message": [get_feed(1, unit="°C")],
@@ -176,3 +179,37 @@ async def test_untagged_device_survives_url_change(
     )
     assert reloaded.id == device.id
     assert reloaded.name == "emoncms@1.1.1.3"
+
+
+async def test_stale_feed_unavailable(
+    hass: HomeAssistant,
+    config_single_feed: MockConfigEntry,
+    emoncms_client: AsyncMock,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Test a feed that stops updating becomes unavailable, then recovers."""
+    now = datetime.fromtimestamp(1665509570, UTC)
+    freezer.move_to(now)
+    emoncms_client.async_request.return_value = {
+        "success": True,
+        "message": [get_feed(1, unit="°C")],
+    }
+    await setup_integration(hass, config_single_feed)
+    entity_id = "sensor.tag_temperature_parameter_1"
+    assert hass.states.get(entity_id).state == "18.04"
+
+    freezer.tick(timedelta(hours=1, minutes=1))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert hass.states.get(entity_id).state == "unavailable"
+
+    emoncms_client.async_request.return_value = {
+        "success": True,
+        "message": [
+            get_feed(1, unit="°C", timestamp=int(dt_util.utcnow().timestamp()))
+        ],
+    }
+    freezer.tick(60)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert hass.states.get(entity_id).state == "18.04"
