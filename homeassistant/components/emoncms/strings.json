@@ -99,10 +99,12 @@
     "step": {
       "init": {
         "data": {
-          "include_only_feed_id": "[%key:component::emoncms::config::step::choose_feeds::data::include_only_feed_id%]"
+          "include_only_feed_id": "[%key:component::emoncms::config::step::choose_feeds::data::include_only_feed_id%]",
+          "stale_after": "Offline after"
         },
         "data_description": {
-          "include_only_feed_id": "[%key:component::emoncms::config::step::choose_feeds::data_description::include_only_feed_id%]"
+          "include_only_feed_id": "[%key:component::emoncms::config::step::choose_feeds::data_description::include_only_feed_id%]",
+          "stale_after": "Minutes without a new value before a feed is shown as unavailable."
         }
       }
     }

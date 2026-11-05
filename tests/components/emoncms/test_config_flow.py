@@ -7,6 +7,7 @@ from pytest_homeassistant.common import MockConfigEntry
 
 from homeassistant.components.emoncms.const import (
     CONF_ONLY_INCLUDE_FEEDID,
+    CONF_STALE_AFTER,
     DOMAIN,
     SYNC_MODE,
     SYNC_MODE_AUTO,
@@ -202,6 +203,7 @@ async def test_options_flow(
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert config_entry.options == {
         CONF_ONLY_INCLUDE_FEEDID: ["1"],
+        CONF_STALE_AFTER: 60,
     }
 
 
@@ -228,7 +230,10 @@ async def test_options_flow_failure(
         },
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert config_entry.options == {CONF_ONLY_INCLUDE_FEEDID: ["1"]}
+    assert config_entry.options == {
+        CONF_ONLY_INCLUDE_FEEDID: ["1"],
+        CONF_STALE_AFTER: 60,
+    }
 
 
 @pytest.mark.usefixtures("mock_setup_entry")

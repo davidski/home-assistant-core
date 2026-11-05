@@ -3,8 +3,10 @@
 import logging
 
 CONF_ONLY_INCLUDE_FEEDID = "include_only_feed_id"
+CONF_STALE_AFTER = "stale_after"
 CONF_MESSAGE = "message"
 CONF_SUCCESS = "success"
+DEFAULT_STALE_AFTER = 60
 DOMAIN = "emoncms"
 EMONCMS_UUID_DOC_URL = (
     "https://docs.openenergymonitor.org/emoncms/update.html"

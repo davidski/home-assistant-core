@@ -12,7 +12,11 @@ from pytest_homeassistant.common import (
 )
 from syrupy.assertion import SnapshotAssertion
 
-from homeassistant.components.emoncms.const import DOMAIN
+from homeassistant.components.emoncms.const import (
+    CONF_ONLY_INCLUDE_FEEDID,
+    CONF_STALE_AFTER,
+    DOMAIN,
+)
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_URL
 from homeassistant.core import HomeAssistant
@@ -220,3 +224,31 @@ async def test_stale_feed_unavailable(
     await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(entity_id).state == "18.04"
     assert "Feed tag parameter 1 is updating again" in caplog.text
+
+
+async def test_stale_after_option(
+    hass: HomeAssistant,
+    config_single_feed: MockConfigEntry,
+    emoncms_client: AsyncMock,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Test the stale cutoff comes from the options."""
+    freezer.move_to(datetime.fromtimestamp(1665509570, UTC))
+    emoncms_client.async_request.return_value = {
+        "success": True,
+        "message": [get_feed(1, unit="°C")],
+    }
+    await setup_integration(hass, config_single_feed)
+    result = await hass.config_entries.options.async_init(config_single_feed.entry_id)
+    await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={CONF_ONLY_INCLUDE_FEEDID: ["1"], CONF_STALE_AFTER: 5},
+    )
+    await hass.async_block_till_done()
+    entity_id = "sensor.tag_temperature_parameter_1"
+    assert hass.states.get(entity_id).state == "18.04"
+
+    freezer.tick(timedelta(minutes=6))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert hass.states.get(entity_id).state == "unavailable"

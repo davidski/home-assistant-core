@@ -14,6 +14,9 @@ from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -23,7 +26,9 @@ from homeassistant.helpers.selector import (
 from .const import (
     CONF_MESSAGE,
     CONF_ONLY_INCLUDE_FEEDID,
+    CONF_STALE_AFTER,
     CONF_SUCCESS,
+    DEFAULT_STALE_AFTER,
     DOMAIN,
     FEED_ID,
     FEED_NAME,
@@ -253,10 +258,10 @@ class EmoncmsOptionsFlow(OptionsFlowWithReload):
             options = get_options(result[CONF_MESSAGE])
         dropdown = {"options": options, "mode": "dropdown", "multiple": True}
         if user_input:
-            include_only_feeds = user_input[CONF_ONLY_INCLUDE_FEEDID]
             return self.async_create_entry(
                 data={
-                    CONF_ONLY_INCLUDE_FEEDID: include_only_feeds,
+                    CONF_ONLY_INCLUDE_FEEDID: user_input[CONF_ONLY_INCLUDE_FEEDID],
+                    CONF_STALE_AFTER: int(user_input[CONF_STALE_AFTER]),
                 },
             )
 
@@ -267,6 +272,20 @@ class EmoncmsOptionsFlow(OptionsFlowWithReload):
                     probatio.Required(
                         CONF_ONLY_INCLUDE_FEEDID, default=include_only_feeds
                     ): selector({"select": dropdown}),
+                    probatio.Required(
+                        CONF_STALE_AFTER,
+                        default=self.config_entry.options.get(
+                            CONF_STALE_AFTER, DEFAULT_STALE_AFTER
+                        ),
+                    ): NumberSelector(
+                        NumberSelectorConfig(
+                            min=1,
+                            max=1440,
+                            step=1,
+                            unit_of_measurement="min",
+                            mode=NumberSelectorMode.BOX,
+                        )
+                    ),
                 }
             ),
             errors=errors,

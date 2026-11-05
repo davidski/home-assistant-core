@@ -35,6 +35,8 @@ from homeassistant.util import dt as dt_util
 from .config_flow import sensor_name
 from .const import (
     CONF_ONLY_INCLUDE_FEEDID,
+    CONF_STALE_AFTER,
+    DEFAULT_STALE_AFTER,
     DOMAIN,
     FEED_ID,
     FEED_NAME,
@@ -192,8 +194,6 @@ ATTR_SIZE = "Size"
 ATTR_TAG = "Tag"
 ATTR_USERID = "UserId"
 DECIMALS = 2
-# Feeds not updated within this window are treated as offline
-STALE_AFTER = timedelta(hours=1)
 
 
 async def async_setup_entry(
@@ -211,6 +211,9 @@ async def async_setup_entry(
         return
 
     coordinator = entry.runtime_data
+    stale_after = timedelta(
+        minutes=entry.options.get(CONF_STALE_AFTER, DEFAULT_STALE_AFTER)
+    )
     # uuid was added in emoncms database 11.5.7
     unique_id = entry.unique_id or entry.entry_id
     elems = coordinator.data
@@ -228,6 +231,7 @@ async def async_setup_entry(
                 elem.get("unit"),
                 name,
                 idx,
+                stale_after,
             )
         )
     async_add_entities(sensors)
@@ -245,10 +249,12 @@ class EmonCmsSensor(CoordinatorEntity[EmoncmsCoordinator], SensorEntity):
         unit_of_measurement: str | None,
         name: str,
         idx: int,
+        stale_after: timedelta,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.idx = idx
+        self._stale_after = stale_after
         self._stale = False
         elem = {}
         if self.coordinator.data:
@@ -295,7 +301,7 @@ class EmonCmsSensor(CoordinatorEntity[EmoncmsCoordinator], SensorEntity):
         stale = (
             elem["time"] is None
             or dt_util.utcnow() - dt_util.utc_from_timestamp(float(elem["time"]))
-            >= STALE_AFTER
+            >= self._stale_after
         )
         if stale != self._stale:
             if stale:
