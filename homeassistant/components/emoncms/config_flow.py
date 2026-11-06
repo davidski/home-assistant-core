@@ -273,17 +273,19 @@ class EmoncmsOptionsFlow(OptionsFlowWithReload):
             CONF_STALE_AFTER, DEFAULT_STALE_AFTER
         )
         if user_input:
-            offline = user_input[CONF_OFFLINE_DETECTION]
+            offline = user_input.get(CONF_OFFLINE_DETECTION, {})
             return self.async_create_entry(
                 data={
                     CONF_ONLY_INCLUDE_FEEDID: user_input[CONF_ONLY_INCLUDE_FEEDID],
-                    CONF_STALE_AFTER: int(offline[CONF_STALE_AFTER]),
+                    CONF_STALE_AFTER: int(offline.get(CONF_STALE_AFTER, stale_after)),
                     CONF_STALE_AFTER_OVERRIDES: [
                         {
                             CONF_DEVICE: override[CONF_DEVICE],
                             CONF_STALE_AFTER: int(override[CONF_STALE_AFTER]),
                         }
-                        for override in offline.get(CONF_STALE_AFTER_OVERRIDES, [])
+                        for override in offline.get(
+                            CONF_STALE_AFTER_OVERRIDES, overrides
+                        )
                     ],
                 },
             )
@@ -295,7 +297,7 @@ class EmoncmsOptionsFlow(OptionsFlowWithReload):
                     probatio.Required(
                         CONF_ONLY_INCLUDE_FEEDID, default=include_only_feeds
                     ): selector({"select": dropdown}),
-                    probatio.Required(CONF_OFFLINE_DETECTION, default={}): section(
+                    probatio.Optional(CONF_OFFLINE_DETECTION): section(
                         probatio.Schema(
                             {
                                 probatio.Required(

@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock
 
+import probatio
 import pytest
 from pytest_homeassistant.common import MockConfigEntry
 
@@ -268,6 +269,8 @@ async def test_options_flow_stale_after_overrides(
     result = await hass.config_entries.options.async_init(config_entry.entry_id)
     schema = result["data_schema"].schema
     (section_key,) = (key for key in schema if key == CONF_OFFLINE_DETECTION)
+    # A default on the section would replace its fields' defaults in the UI.
+    assert section_key.default is probatio.UNDEFINED
     section_schema = schema[section_key].schema.schema
     (overrides_key,) = (
         key for key in section_schema if key == CONF_STALE_AFTER_OVERRIDES
