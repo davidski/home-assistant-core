@@ -22,7 +22,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
 from . import setup_integration
-from .conftest import EMONCMS_FAILURE, FEEDS, FLOW_RESULT, SENSOR_NAME, UNIQUE_ID
+from .conftest import (
+    EMONCMS_FAILURE,
+    FEEDS,
+    FLOW_RESULT,
+    SENSOR_NAME,
+    UNIQUE_ID,
+    get_feed,
+)
 
 USER_INPUT = {
     CONF_URL: "http://1.1.1.1",
@@ -264,8 +271,12 @@ async def test_options_flow_stale_after_overrides(
     emoncms_client: AsyncMock,
     config_entry: MockConfigEntry,
 ) -> None:
-    """Options flow - per-device cutoffs are offered by tag and saved."""
+    """Options flow - per-device cutoffs are offered for synchronized tags."""
     await setup_integration(hass, config_entry)
+    emoncms_client.async_request.return_value = {
+        "success": True,
+        "message": [*FEEDS, {**get_feed(99), "tag": "not_synchronized"}],
+    }
     result = await hass.config_entries.options.async_init(config_entry.entry_id)
     schema = result["data_schema"].schema
     (section_key,) = (key for key in schema if key == CONF_OFFLINE_DETECTION)

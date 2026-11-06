@@ -266,7 +266,9 @@ class EmoncmsOptionsFlow(OptionsFlowWithReload):
         else:
             options = get_options(result[CONF_MESSAGE])
             tags.update(
-                feed[FEED_TAG] for feed in result[CONF_MESSAGE] if feed[FEED_TAG]
+                feed[FEED_TAG]
+                for feed in result[CONF_MESSAGE]
+                if feed[FEED_TAG] and feed[FEED_ID] in include_only_feeds
             )
         dropdown = {"options": options, "mode": "dropdown", "multiple": True}
         stale_after = self.config_entry.options.get(
